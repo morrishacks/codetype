@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CodeType | Programming Typing Practice</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg-color: #1e1e2e;
+      --text-color: #cdd6f4;
+      --correct-color: #a6e3a1;
+      --wrong-color: #f38ba8;
+      --untyped-color: #6c7086;
+      --active-color: #89b4fa;
+      --accent-color: #cba6f7;
+      --border-radius: 8px;
+    }
+    body {
+      font-family: 'IBM Plex Mono', monospace;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      overflow-x: hidden;
+    }
+    .container { max-width: 1200px; width: 100%; }
+    .logo {
+      font-size: 2.5rem; font-weight: 700; color: var(--accent-color);
+      margin-bottom: 0.5rem;
+    }
+    .controls {
+      display: flex; flex-wrap: wrap; justify-content: center;
+      gap: 1rem; margin-bottom: 2rem;
+    }
+    .stats {
+      display: flex; justify-content: center;
+      gap: 2rem; margin-bottom: 1.5rem;
+    }
+    .stat-value {
+      font-size: 1.8rem; font-weight: 700; color: var(--active-color);
+    }
+    .stat-label { font-size: 0.9rem; color: var(--untyped-color); }
+    .typing-area {
+      background-color: rgba(30, 30, 46, 0.5);
+      border-radius: var(--border-radius);
+      padding: 2rem; margin-bottom: 2rem;
+      position: relative;
+    }
+    .target-text {
+      font-size: 1.5rem; line-height: 2.5rem;
+      white-space: pre-wrap; word-break: break-word;
+      min-height: 150px; padding: 10px;
+      border-radius: var(--border-radius);
+      background-color: rgba(49, 50, 68, 0.5);
+      border: 1px solid rgba(108,112,134,0.3);
+    }
+    .target-symbol.correct { color: var(--correct-color); }
+    .target-symbol.wrong { color: var(--wrong-color); }
+    .target-symbol.active {
+      background-color: rgba(137,180,250,0.2);
+      box-shadow: 0 0 0 1px var(--active-color);
+    }
+    .live-keys {
+      margin-top: 1rem; font-size: 1.2rem; color: var(--active-color);
+    }
+    .settings {
+      margin-top: 2rem;
+      background-color: rgba(49,50,68,0.5);
+      border-radius: var(--border-radius);
+      padding: 1rem; max-width: 600px;
+      display: none;
+    }
+    .footer {
+      margin-top: 3rem; text-align: center;
+      color: var(--untyped-color); font-size: 0.9rem;
+    }
+    #profile-modal { z-index: 50; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header text-center mb-4">
+      <div class="logo">CodeType</div>
+    </div>
+
+    <div class="controls">
+      <button id="toggle-settings" class="px-4 py-2 rounded bg-gray-600 text-white">Settings</button>
+      <select id="language-select" class="px-2 py-1 bg-gray-700 text-white rounded">
+        <option value="javascript">JavaScript</option>
+        <option value="java">Java</option>
+        <option value="python">Python</option>
+        <option value="cpp">C++</option>
+      </select>
+      <select id="difficulty-select" class="px-2 py-1 bg-gray-700 text-white rounded">
+        <option value="beginner">Beginner</option>
+        <option value="intermediate">Intermediate</option>
+        <option value="advanced">Advanced</option>
+      </select>
+      <button id="project-mode-toggle" class="px-4 py-2 rounded bg-purple-600 text-white">Project Mode: OFF</button>
+      <select id="theme-select" class="px-2 py-1 bg-gray-700 text-white rounded border border-gray-500">
+        <option value="catppuccin">Catppuccin</option>
+        <option value="dracula">Dracula</option>
+        <option value="nord">Nord</option>
+        <option value="gruvbox">Gruvbox</option>
+        <option value="light">Light</option>
+      </select>
+      <button id="export-stats" class="px-4 py-2 rounded bg-blue-600 text-white">Export Stats</button>
+      <button id="profile-button" class="px-4 py-2 rounded bg-green-600 text-white">Profile</button>
+    </div>
+
+    <div class="stats">
+      <div><div class="stat-value" id="wpm">0</div><div class="stat-label">WPM</div></div>
+      <div><div class="stat-value" id="accuracy">100</div><div class="stat-label">Accuracy</div></div>
+      <div><div class="stat-value" id="symbols">0</div><div class="stat-label">Symbols</div></div>
+      <div><div class="stat-value" id="timer">60</div><div class="stat-label">Time Left</div></div>
+    </div>
+
+    <div class="typing-area">
+      <div class="target-text" id="target-text"></div>
+      <input type="text" id="input-area" autocomplete="off" autocorrect="off"
+        autocapitalize="off" spellcheck="false" style="opacity:0;position:absolute;left:0;top:0;z-index:-1;">
+    </div>
+        <div class="live-keys" id="live-keys">Live Key: </div>
+
+    <canvas id="performanceChart" width="400" height="200" class="mt-6"></canvas>
+
+    <div class="mt-6 bg-gray-800 p-4 rounded text-sm" id="history-log">
+      <h2 class="text-lg font-bold mb-2 text-white">Typing History (Last 10)</h2>
+      <ul id="history-list" class="list-disc ml-4 text-gray-300"></ul>
+    </div>
+
+    <div class="footer">Practice typing programming code snippets</div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settings-modal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden">
+    <div class="bg-gray-900 text-white p-6 rounded-xl max-w-md w-full">
+      <h2 class="text-2xl font-bold mb-4 text-center">Settings</h2>
+      <label class="block mb-2">Words: <input type="number" id="word-count" value="5" min="1" class="ml-2 p-1 rounded text-black"></label>
+      <label class="block mb-2">Duration: <input type="number" id="test-duration" value="60" min="10" class="ml-2 p-1 rounded text-black"></label>
+      <div class="mt-4 flex justify-between">
+        <button id="apply-settings" class="bg-green-600 px-4 py-2 rounded">Apply</button>
+        <button onclick="closeSettings()" class="bg-red-500 px-4 py-2 rounded">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile Modal -->
+  <div id="profile-modal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden">
+    <div class="bg-gray-900 text-white p-6 rounded-xl max-w-md w-full">
+      <h2 class="text-2xl font-bold mb-4 text-center">Your Profile</h2>
+      <ul class="space-y-2 text-sm">
+        <li><strong>Best WPM:</strong> <span id="profile-best-wpm">0</span></li>
+        <li><strong>Best Accuracy:</strong> <span id="profile-best-accuracy">0%</span></li>
+        <li><strong>Average WPM:</strong> <span id="profile-avg-wpm">0</span></li>
+        <li><strong>Average Accuracy:</strong> <span id="profile-avg-accuracy">0%</span></li>
+        <li><strong>Total Tests Taken:</strong> <span id="profile-tests">0</span></li>
+      </ul>
+      <div class="text-center mt-4">
+        <button onclick="closeProfile()" class="bg-red-500 px-4 py-2 rounded">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const targetTextEl = document.getElementById('target-text');
+    const inputAreaEl = document.getElementById('input-area');
+    const toggleSettingsBtn = document.getElementById('toggle-settings');
+    const settingsEl = document.getElementById('settings-modal');
+    const applySettingsBtn = document.getElementById('apply-settings');
+    const wordCountInput = document.getElementById('word-count');
+    const testDurationInput = document.getElementById('test-duration');
+    const wpmEl = document.getElementById('wpm');
+    const accuracyEl = document.getElementById('accuracy');
+    const symbolsEl = document.getElementById('symbols');
+    const timerEl = document.getElementById('timer');
+    const liveKeysEl = document.getElementById('live-keys');
+    const languageSelect = document.getElementById('language-select');
+    const difficultySelect = document.getElementById('difficulty-select');
+    const projectModeToggle = document.getElementById('project-mode-toggle');
+    const themeSelect = document.getElementById('theme-select');
+    const exportStatsBtn = document.getElementById('export-stats');
+    const profileBtn = document.getElementById('profile-button');
+
+    let testInProgress = false, startTime, totalTyped = 0, totalCorrect = 0,
+        timerInterval, wpmInterval, targetFullText = '', wpmHistory = [];
+    let selectedLanguage = languageSelect.value;
+    let selectedDifficulty = difficultySelect.value;
+    let projectMode = false;
+    let timerStarted = false;
+
+    const codeSnippets = {
+      javascript: {
+        beginner: ["let x = 5;", "console.log('Hello');"],
+        intermediate: ["for(let i=0;i<5;i++){ console.log(i); }"],
+        advanced: ["async function fetchData(){ const res = await fetch(url);}"],
+        projects: ["function calculator(a,b){ return a+b;} console.log(calculator(2,3));"]
+      },
+      java: {
+        beginner: ["int x = 5;", "System.out.println(\"Hello\");"],
+        intermediate: ["for(int i=0;i<5;i++){ System.out.println(i);}"],
+        advanced: ["class Person{String name;Person(String n){name=n;}}"],
+        projects: ["public class Calc{public static int add(int a,int b){return a+b;} public static void main(String[] args){System.out.println(add(2,3));}}"]
+      },
+      python: {
+        beginner: ["x=5", "print('Hello')"],
+        intermediate: ["for i in range(5): print(i)"],
+        advanced: ["def fib(n): return 1 if n<2 else fib(n-1)+fib(n-2)"],
+        projects: ["def add(a,b): return a+b\nprint(add(3,4))"]
+      },
+      cpp: {
+        beginner: ["int x=5;", "std::cout<<\"Hi\";"],
+        intermediate: ["for(int i=0;i<5;i++){ std::cout<<i;}"],
+        advanced: ["template<typename T>T add(T a,T b){return a+b;}"],
+        projects: ["#include<iostream>\nint add(int a,int b){return a+b;}int main(){std::cout<<add(1,2);}"]
+      }
+    };
+
+    // Theme definitions
+    const themes = {
+      catppuccin: { 
+        "--bg-color": "#1e1e2e",
+        "--text-color": "#cdd6f4",
+        "--correct-color": "#a6e3a1",
+        "--wrong-color": "#f38ba8",
+        "--untyped-color": "#6c7086",
+        "--active-color": "#89b4fa",
+        "--accent-color": "#cba6f7"
+    },
+
+      dracula: {
+        "--bg-color": "#282a36",
+        "--text-color": "#f8f8f2",
+        "--correct-color": "#50fa7b",
+        "--wrong-color": "#ff5555",
+        "--untyped-color": "#6272a4",
+        "--active-color": "#bd93f9",
+        "--accent-color": "#ff79c6"
+    },
+    
+      nord: { 
+        "--bg-color": "#2e3440",
+        "--text-color": "#d8dee9",
+        "--correct-color": "#a3be8c",
+        "--wrong-color": "#bf616a",
+        "--untyped-color": "#4c566a",
+        "--active-color": "#81a1c1",
+        "--accent-color": "#88c0d0"  
+    },
+
+      gruvbox: {
+        "--bg-color": "#282828",
+        "--text-color": "#ebdbb2",
+        "--correct-color": "#b8bb26",
+        "--wrong-color": "#fb4934",
+        "--untyped-color": "#928374",
+        "--active-color": "#83a598",
+        "--accent-color": "#fabd2f" 
+    },
+
+      light: {
+        "--bg-color": "#ffffff",
+        "--text-color": "#000000",
+        "--correct-color": "#22863a",
+        "--wrong-color": "#d73a49",
+        "--untyped-color": "#6a737d",
+        "--active-color": "#005cc5",
+        "--accent-color": "#e36209" 
+    }
+    };
+
+    function generateText() {
+      let source = projectMode
+        ? codeSnippets[selectedLanguage].projects
+        : codeSnippets[selectedLanguage][selectedDifficulty];
+      let count = parseInt(wordCountInput.value);
+      let arr = [];
+      for (let i = 0; i < count; i++) {
+        arr.push(source[Math.floor(Math.random() * source.length)]);
+      }
+      return arr.join('\n');
+    }
+
+    function renderCharacters(text) {
+      targetTextEl.innerHTML = '';
+      [...text].forEach((char, idx) => {
+        const span = document.createElement('span');
+        span.textContent = char;
+        span.classList.add('target-symbol');
+        if (idx === 0) span.classList.add('active');
+        targetTextEl.appendChild(span);
+      });
+    }
+
+    function prepareTest() {
+      const txt = generateText();
+      testInProgress = false;
+      timerStarted = false;
+      totalTyped = 0; totalCorrect = 0; wpmHistory = [];
+      targetFullText = txt;
+      renderCharacters(txt);
+      inputAreaEl.value = '';
+      inputAreaEl.focus();
+      wpmEl.textContent = 0;
+      accuracyEl.textContent = 100;
+      symbolsEl.textContent = 0;
+      timerEl.textContent = parseInt(testDurationInput.value);
+      clearInterval(timerInterval);
+      clearInterval(wpmInterval);
+    }
+
+    function startTimerAndTest() {
+      if (timerStarted) return;
+      timerStarted = true;
+      testInProgress = true;
+      startTime = new Date();
+      let tl = parseInt(testDurationInput.value);
+      wpmInterval = setInterval(() => {
+        updateStats(); updateChart();
+      }, 1000);
+      timerInterval = setInterval(() => {
+        timerEl.textContent = --tl;
+        if (tl <= 0) endTest();
+      }, 1000);
+    }
+
+    function updateStats() {
+      const elapsed = (new Date() - startTime)/60000;
+      const wpm = Math.round((totalCorrect/5)/elapsed);
+      const accuracy = totalTyped ? Math.round(totalCorrect/totalTyped*100) : 100;
+      wpmEl.textContent = isFinite(wpm) ? wpm : 0;
+      accuracyEl.textContent = accuracy;
+      symbolsEl.textContent = totalTyped;
+      wpmHistory.push(isFinite(wpm) ? wpm : 0);
+    }
+
+    function endTest() {
+      testInProgress = false;
+      clearInterval(timerInterval);
+      clearInterval(wpmInterval);
+      inputAreaEl.blur();
+      saveResult();
+    }
+
+    function saveResult() {
+      const res = {
+        wpm: +wpmEl.textContent,
+        accuracy: +accuracyEl.textContent,
+        symbols: +symbolsEl.textContent,
+        time: new Date().toLocaleString()
+      };
+      let hist = JSON.parse(localStorage.getItem('codeTypeHistory') || '[]');
+      hist.unshift(res);
+      if (hist.length > 10) hist = hist.slice(0, 10);
+      localStorage.setItem('codeTypeHistory', JSON.stringify(hist));
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const ul = document.getElementById('history-list');
+      ul.innerHTML = '';
+      const hist = JSON.parse(localStorage.getItem('codeTypeHistory') || '[]');
+      hist.forEach(r => {
+        const li = document.createElement('li');
+        li.textContent = `WPM: ${r.wpm}, Acc: ${r.accuracy}%, Symbols: ${r.symbols}, Time: ${r.time}`;
+        ul.appendChild(li);
+      });
+    }
+
+    inputAreaEl.addEventListener('input', () => {
+      if (!timerStarted) startTimerAndTest();
+      const user = inputAreaEl.value;
+      const spans = targetTextEl.querySelectorAll('.target-symbol');
+      totalTyped = user.length; totalCorrect = 0;
+      spans.forEach((s, i) => {
+        s.classList.remove('correct', 'wrong', 'active');
+        const ch = user[i];
+        if (ch == null) {
+          if (i === user.length) s.classList.add('active');
+          return;
+        }
+        if (ch === s.textContent) {
+          s.classList.add('correct');
+          totalCorrect++;
+        } else {
+          s.classList.add('wrong');
+        }
+        if (i === user.length) s.classList.add('active');
+      });
+      if (user.length === targetFullText.length) endTest();
+      updateStats();
+    });
+
+    toggleSettingsBtn.addEventListener('click', () => settingsEl.classList.toggle('hidden'));
+    function closeSettings() { settingsEl.classList.add('hidden'); }
+
+    applySettingsBtn.addEventListener('click', () => {
+      closeSettings(); prepareTest();
+    });
+
+    languageSelect.addEventListener('change', () => {
+      selectedLanguage = languageSelect.value; prepareTest();
+    });
+    difficultySelect.addEventListener('change', () => {
+      selectedDifficulty = difficultySelect.value; if (!projectMode) prepareTest();
+    });
+    projectModeToggle.addEventListener('click', () => {
+      projectMode = !projectMode;
+      projectModeToggle.textContent = `Project Mode: ${projectMode ? 'ON' : 'OFF'}`;
+      prepareTest();
+    });
+
+    themeSelect.addEventListener('change', (e) => applyTheme(e.target.value));
+    function applyTheme(t) {
+      const theme = themes[t];
+      for (let k in theme) document.documentElement.style.setProperty(k, theme[k]);
+      localStorage.setItem('selectedTheme', t);
+    }
+    const st = localStorage.getItem('selectedTheme') || 'catppuccin';
+    themeSelect.value = st; applyTheme(st);
+
+    exportStatsBtn.addEventListener('click', () => {
+      const blob = new Blob([localStorage.getItem('codeTypeHistory') || '[]'], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'codeType_stats.json';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+
+    profileBtn.addEventListener('click', showProfile);
+    function showProfile() {
+      const hist = JSON.parse(localStorage.getItem('codeTypeHistory') || '[]');
+      let best = 0, bestA = 0, totW = 0, totA = 0;
+      hist.forEach(r => { if (r.wpm > best) best = r.wpm; if (r.accuracy > bestA) bestA = r.accuracy; totW += r.wpm; totA += r.accuracy; });
+      const avgW = hist.length ? Math.round(totW / hist.length) : 0;
+      const avgA = hist.length ? Math.round(totA / hist.length) : 0;
+      document.getElementById('profile-best-wpm').textContent = best;
+      document.getElementById('profile-best-accuracy').textContent = bestA + '%';
+      document.getElementById('profile-avg-wpm').textContent = avgW;
+      document.getElementById('profile-avg-accuracy').textContent = avgA + '%';
+      document.getElementById('profile-tests').textContent = hist.length;
+      document.getElementById('profile-modal').classList.remove('hidden');
+    }
+    function closeProfile() { document.getElementById('profile-modal').classList.add('hidden'); }
+
+    document.addEventListener('keydown', e => {
+      liveKeysEl.textContent = `Live Key: ${e.key}`;
+      new Audio("https://www.soundjay.com/button/sounds/button-29.mp3").play();
+    });
+    targetTextEl.addEventListener('click', () => inputAreaEl.focus());
+
+    const ctx = document.getElementById('performanceChart').getContext('2d');
+    const wpmChart = new Chart(ctx, {
+      type: 'line',
+      data: { labels: [], datasets: [{ label: 'WPM', data: [], borderColor: '#89b4fa', backgroundColor: 'rgba(137,180,250,0.1)', tension: 0.3 }] },
+      options: { animation: false, scales: { x: { title: { display: true, text: 'Seconds' } }, y: { beginAtZero: true, title: { display: true, text: 'WPM' } } } }
+    });
+    function updateChart() {
+      const t = wpmHistory.length;
+      wpmChart.data.labels.push(t);
+      wpmChart.data.datasets[0].data = [...wpmHistory];
+      wpmChart.update();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      renderHistory(); prepareTest();
+    });
+  </script>
+</body>
+</html>
+
+
+
